@@ -9,7 +9,7 @@
 #include <sys/socket.h>
 
 // the port client will be connecting to
-#define PORT 3490
+//#define PORT 3490
 // max number of bytes we can get at once
 #define MAXDATASIZE 300
 
@@ -17,11 +17,13 @@ int main(int argc, char *argv[]){
   int sockfd, numbytes;
   char buf[MAXDATASIZE];
   struct hostent *he;
+  unsigned int PORT= atoi(argv[2]);
+  printf("\n %i  \n",&PORT);
 
   // connectors address information
   struct sockaddr_in their_addr;
   // if no command line argument supplied
-  if(argc != 2){
+  if(argc != 3){
     fprintf(stderr, "Client-Usage: %s host_servidor\n", argv[0]);
 
     // just exit
