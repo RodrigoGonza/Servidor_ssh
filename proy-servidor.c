@@ -31,46 +31,25 @@ void sigchld_handler(int s){
 
 
 
-int base_datos(char cadena[MAXDATASIZE]){ //Cadena recibida del cliente
-char comando[7];  //en esta variable se guardan los primeros 6 caracteres
-char numero_cuenta[15]; //en esta variable se guardan los siguientes 9 caracteres
-char nombre[282];       //en esta variable se guardan el resto de caracteres
-char insert[7]="insert";//variable para comparar
-char select[7]="select";//variable para comparar
-FILE *archivo;          //variable que apuntará al archivo que se creará
-char car;               //variable para extraer informacion del documento
-int i,j;                //enteros usados para contadores
-if (cadena[6]!=' ')                    //condicional para verificar el espacio en la cadena
-    return 2;                          //Regresa un 2 si no existe el espacio
-for(i=0; i<6; i++)                     //Con este for guardamos los caracteres de
+int funcion_ssh(char cadena[MAXDATASIZE]){ //Cadena recibida del cliente
+
+  char comando[7];  //en esta variable se guardan los primeros 6 caracteres
+  char salir[7]="salida";//variable para comparar
+  FILE *archivo;          //variable que apuntará al archivo que se creará
+  char car;               //variable para extraer informacion del documento
+  int i;                //enteros usados para contadores
+  for(i=0; i<6; i++)                     //Con este for guardamos los caracteres de
     comando[i]=cadena[i];              // la cadena en la variable comando
-comando[6]='\0';                       //Agregamos el caracter de fin de cadena
-for(i=7; i<16; i++){                   //Con este for guardamos los caracteres de
-    numero_cuenta[i-7]=cadena[i];      // la cadena en la variable comando
-    if(!isdigit(numero_cuenta[i-7]))   //verificamos que todos los caracteres del numero de cuenta sean digitos
-        return 3;                      //sale y regresa un 3 si algún caracter no es un digito
-                   }
-numero_cuenta[9]='\0';                 //Agregamos el caracter de fin de cadena
-i=17;              
-j=0;
-while(cadena[i]!='\0'){                //Utilizamos este while para guardar el nombre 
-     nombre[j]=cadena[i];              
-     i++;
-     j++;
-                      }
-nombre[j]='\0'; 
-if(strcmp(comando,insert)==0){         //comparamos el comando para saber si es un insert
-    if (cadena[16]!=' ')               //Verificamos si existe el espacio entre el numero de cuenta y el nombre
-        return 2;
-    strcat(numero_cuenta,".txt");      //A la variable del numero de cuenta le concatenamos ".txt"
-    archivo=fopen(numero_cuenta,"w");       //Abrimos o creamos un archivo de texto que se llame como el numero de cuenta 
-    fprintf(archivo,nombre);           //Agregamos el nombre al archivo de texto
-    fclose(archivo);                   //Cerramos el archivo
-    return 0;        
-}
-else if(strcmp(comando,select)==0){    //comparamos el comando para saber si es un select
-    strcat(numero_cuenta,".txt");      //A la variable del numero de cuenta le concatenamos ".txt"
-    archivo=fopen(numero_cuenta,"r");  //Abrimos el archivo en modo lectura
+  comando[6]='\0';                       //Agregamos el caracter de fin de cadena
+  if(strcmp(comando,salir)==0){     //Comparamos para salir
+    printf("Saliendo\n");            //Imprimimos la indicación del lado del servidor
+    return 1;                         //Regresamos uno para saber que debemos salir de la aplicación
+  }
+  else{
+    char aux_cadena[] = " > comando.txt";
+    strcat(cadena,aux_cadena);
+    system(cadena);
+    archivo=fopen("comando.txt","r");  //Abrimos el archivo en modo lectura
     if(archivo!=NULL){                 //Verificamos que no este vacio el archivo
         i=0;                           
         while(1){
@@ -84,10 +63,11 @@ else if(strcmp(comando,select)==0){    //comparamos el comando para saber si es 
         cont_aux=i+1;
                      }
     fclose(archivo);                   //Cerramos el archivo
-    return 1;
-                                    }
-else{
-return 2;}
+    return 0;
+  }
+
+  
+
 
 }
 
@@ -195,19 +175,60 @@ int main(int argc, char *argv[ ]){
       printf("Mensaje: %s\n",buffer);
       //Llamamos a la funcion base_datos y la función regresará un valor que determinará
       // si el comando fue exitoso o no y el mensaje que se le enviará al cliente
-      int salida=base_datos(buffer);
-      // Condicionales anidados para enviar un mensaje al cliente
-      if(salida==0)
-          send(new_fd, "Insert exitoso!\n", 16, 0);
-      else if(salida==1){
-          send(new_fd, cadena_aux, cont_aux, 0);
+      int salida=funcion_ssh(buffer);
+
+      if(salida==1)                    //Al ser 1 en la salida significa que el cliente se desconectará
+          send(new_fd, "salida", 8, 0);  //El servidor envia la cadena "salida"
+      else if(salida==0){              //Al ser cero el servidor envia el resultado del comando enviado
+          send(new_fd, cadena_aux, cont_aux, 0);    //Enviamos el resultado del comando
           memset(cadena_aux, 0,cont_aux);
           }
-      else if(salida==2)
-          send(new_fd, "Comando erroneo!\n", 17, 0);
-      else if(salida==3)
-          send(new_fd, "El campo de numero de cuenta debe ser un entero de 9 digitos", 62, 0);
-      //((((((((((  Hasta aqui     ))))))))))))))))))))))))
+
+
+
+/*
+      FILE * fd = fopen(comando , "r" );
+fseek( fd , 0 , SEEK_END ); // Se posiciona al final del archivo
+int tamanio = ftell(fd); // Devuelve el tamaño del archivo (en bytes)
+close(fd);
+printf ("tamaño %i\n", tamanio);
+longList = htonl(tamanio); //asi envia la longitud del archivo
+if((send(s1, (char*)&longList, sizeof(longList), 0)) < 0){
+printf("Error en envio\n");
+exit(1);
+}
+long tam_buffer=512;
+longList= tamanio; //tamaño del archivo
+
+flista= fopen ("comando.txt", "rb");
+if (flista!=NULL){
+falta = longList;
+// Se envia el archivo en partes
+i = 0;
+while(i < longList){
+if (falta<tam_buffer) {
+tam_buffer=falta;
+char buffer[falta];
+char bufferAux[falta+1];
+}
+printf("SERVIDOR ---- tam_buffer: %d - falta: %d\n", tam_buffer, falta);
+
+leidos = fread(buffer, sizeof(char),tam_buffer,flista);
+
+enviados= send(s1, bufferAux, leidos, 0);
+printf("SERVIDOR ---- Envie %d bytes \n", enviados);
+
+falta = falta-leidos;
+i = i + leidos;
+}
+}
+else printf("SERVIDOR ---- No abrio el archivo \n");
+close(flista);
+
+*/
+
+
+
 
       memset(buffer, 0,num_bytes_leidos);
 
